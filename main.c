@@ -56,12 +56,17 @@ int main() {
     light.colorLoc = GetShaderLocation(shader, "light.color");
     update_light(shader, light);
 
+    Model planet = LoadModelFromMesh(GenMeshSphere(1.8f, 32, 32));
     Model sphere = LoadModelFromMesh(GenMeshSphere(2.0f, 32, 32));
+    /* planet.materials[0].shader = shader; */
     sphere.materials[0].shader = shader;
 
     float angle = 0;
+    float time = 0;
 
     while(!WindowShouldClose()) {
+        time = GetTime();
+
         Quaternion pitchr = QuaternionIdentity();
         Quaternion yawr = QuaternionIdentity();
 
@@ -83,6 +88,10 @@ int main() {
             5.0f*sin(angle)
         };
 
+        Quaternion dq = QuaternionFromAxisAngle((Vector3){0.0f, 1.0f, 0.0f}, Lerp(0, 2*PI, time/10));
+        SetShaderValue(shader, GetShaderLocation(shader, "time"), &time, SHADER_UNIFORM_FLOAT);
+        /* SetShaderValueMatrix(shader, GetShaderLocation(shader, "timeRotation"), QuaternionToMatrix(dq)); */
+        SetShaderValueMatrix(shader, GetShaderLocation(shader, "rotationMatrix"), QuaternionToMatrix(rotation));
         update_light(shader, light);
 
         BeginDrawing();
@@ -92,6 +101,7 @@ int main() {
                 rlPushMatrix();
                 rlMultMatrixf(MatrixToFloatV(QuaternionToMatrix(rotation)).v);
 
+                DrawModel(planet, Vector3Zero(), 1.0f, BLUE);
                 DrawModel(sphere, Vector3Zero(), 1.0f, WHITE);
                 /* DrawCubeWiresV((Vector3){0, 0, 0}, (Vector3){10, 10, 10}, WHITE); */
 
