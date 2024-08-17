@@ -1,6 +1,12 @@
 #version 330
 
 #define PI 3.14159
+#define RADIUS 2.0
+#define SEED 7
+#define SPEED 0.4
+#define CLOUD_SIZE 1.3
+#define SPARSITY 1.7
+#define PIXELS 100
 
 in vec3 fragPosition;
 in vec2 fragTexCoord;
@@ -60,12 +66,36 @@ float noise(vec3 uv) {
     return value;
 }
 
+float rand2(vec2 coord) {
+    coord = mod(coord, vec2(1.0,1.0)*round(RADIUS));
+	return fract(sin(dot(coord, vec2(12.9898, 78.233))) * 15.5453 * SEED);
+}
+
+float rand(vec3 coord) {
+    coord = mod(coord, vec3(1.0, 1.0, 1.0)*round(RADIUS));
+    return fract(sin(dot(coord, vec3(12.9898, 78.233, 54.53))) * 15.5453 * SEED);
+}
+
+float pnoise(vec2 coord){
+	vec2 i = floor(coord);
+	vec2 f = fract(coord);
+	
+	float a = rand2(i);
+	float b = rand2(i + vec2(1.0, 0.0));
+	float c = rand2(i + vec2(0.0, 1.0));
+	float d = rand2(i + vec2(1.0, 1.0));
+
+	vec2 cubic = f * f * (3.0 - 2.0 * f);
+
+	return mix(a, b, cubic.x) + (c - a) * cubic.y * (1.0 - cubic.x) + (d - b) * cubic.x * cubic.y;
+}
+
 float fbm(vec3 uv) {
     float total = 0.0;
-    float amplitude = 1.0;
+    float amplitude = 0.5;
     float frequency = 1.0;
     float persistence = 0.5; // Controls how much each octave contributes
-    int octaves = 3; // Number of layers of noise
+    int octaves = 4; // Number of layers of noise
 
     for (int i = 0; i < octaves; i++) {
         total += noise(uv*frequency)*amplitude;
@@ -76,6 +106,41 @@ float fbm(vec3 uv) {
     return total;
 }
 
+
+float circleNoise(vec2 uv) {
+    float uv_y = floor(uv.y);
+    uv.x += uv_y*.31;
+    vec2 f = fract(uv);
+	float h = rand2(vec2(floor(uv.x),floor(uv_y)));
+    float m = (length(f-0.25-(h*0.5)));
+    float r = h*0.25;
+    return smoothstep(0.0, r, m*0.75);
+}
+
+float cloudNoise(vec3 uv) {
+	float total = 0.0;
+	
+	// more iterations for more turbulence
+	for (int i = 0; i < 9; i++) {
+		total += circleNoise(((uv*RADIUS*0.3) + (float(i+1)+10.0)).xy + vec2(fragTime*SPEED/10, 1.0));
+	}
+
+	float fbm = fbm(uv*RADIUS + total + vec3(fragTime*SPEED/10, 0.0, 0.0));
+	
+	return fbm;
+}
+
+float flowNoise(vec3 uv, float time) {
+    vec3 flowDirection = vec3(1.0, 1.0, 0.0); // Direction of the flow
+    float frequency = 0.3;
+    float speed = 1.0;
+    
+    // Shift the coordinates based on time and flow direction
+    vec3 flowUV = uv + flowDirection*time*speed;
+    
+    return cloudNoise(flowUV*frequency);
+}
+
 void main() {
 
     float specularPower = 16.0;
@@ -83,7 +148,7 @@ void main() {
 
     vec4 texelColor = texture(texture0, fragTexCoord);
 
-    vec3 N = normalize(fragNormal);
+    vec3 N = normalize(fragNormal)*1/CLOUD_SIZE;
     vec3 C = normalize(cameraPosition - fragPosition);
 
     //directional lighting
@@ -103,8 +168,11 @@ void main() {
     color = texelColor*phong;
     //color = pow(color, vec4(1.0/2.2));
 
-    float n = fbm(N*1.0 + fragTime/5);
+    //if(N.z < 0.0) N *= -1;
 
+    N = floor(N*PIXELS)/PIXELS;
 
-    color = vec4(vec3((n + 1)*0.5), n < 0 ? 0 : 1);
+    float c = cloudNoise(N*vec3(1.0, 2.0, 1.0));
+
+    color = vec4(vec3(1.0), step(SPARSITY/10, c)*0.74999);
 }

@@ -30,7 +30,7 @@ int main() {
     SetTargetFPS(60);
 
     Camera camera = {0};
-    camera.position = (Vector3){0.0f, 0.0f, -10.0f};
+    camera.position = (Vector3){0.0f, 0.0f, -7.5f};
     camera.target = (Vector3){0.0f, 0.0f, 0.0f};
     camera.up = (Vector3){0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
@@ -47,7 +47,7 @@ int main() {
     SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], (float[3]){camera.position.x, camera.position.y, camera.position.z}, SHADER_UNIFORM_VEC3);
 
     Light light = {0};
-    light.position = (Vector3){-10.0f, 0.0f, 0.0f};
+    light.position = (Vector3){-5.0f, 0.0f, 0.0f};
     light.target = (Vector3){0.0f, 0.0f, 0.0f};
     light.color = GRAY;
 
